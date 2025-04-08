@@ -13,88 +13,89 @@
 
 namespace hacks {
     std::unordered_map<int, std::vector<Ragebot::BacktrackRecord>> Ragebot::backtrackRecords;
-    
+
     // Toggle for the ragebot feature
     static bool ragebot_enabled = false;
-    
+
     // Debug counter to limit console spam - increased to reduce overhead
     static int debug_counter = 0;
-    
+
     // Cache for local player to avoid repeated lookups
     static CEntity* cached_local_player = nullptr;
     static int last_local_player_index = -1;
-    
+
     // Target tracking for consistency
     static CEntity* last_target = nullptr;
     static int target_switch_cooldown = 0;
     static const int TARGET_SWITCH_COOLDOWN_FRAMES = 30; // Don't switch targets for 30 frames
-    
+
     // View angle smoothing
     static CVector last_aim_angles;
-    static const float SMOOTHING_FACTOR = 0.5f; // Lower = smoother, higher = snappier
-    
+    static const float SMOOTHING_FACTOR = 0.8f; // Increased from 0.5f to 0.8f for snappier aim
+
     void Ragebot::Run(CUserCmd* cmd) {
         // Toggle ragebot with F1 key
         if (GetAsyncKeyState(VK_F1) & 1) {
             ragebot_enabled = !ragebot_enabled;
             std::cout << "Ragebot " << (ragebot_enabled ? "ENABLED" : "DISABLED") << std::endl;
-            
+
             // Reset target tracking when toggling
             if (!ragebot_enabled) {
                 last_target = nullptr;
                 target_switch_cooldown = 0;
             }
         }
-        
+
         if (!ragebot_enabled)
             return;
-            
+
         // Get local player with caching
         int local_player_index = interfaces::engine->GetLocalPlayerIndex();
         if (local_player_index != last_local_player_index) {
             cached_local_player = interfaces::entityList->GetEntityFromIndex(local_player_index);
             last_local_player_index = local_player_index;
         }
-        
+
         CEntity* localPlayer = cached_local_player;
         if (!localPlayer || !localPlayer->IsAlive()) {
             if (debug_counter++ % 500 == 0)  // Reduced debug frequency
                 std::cout << "Local player not found or not alive" << std::endl;
             return;
         }
-        
+
         // Debug info every 500 frames (reduced from 100)
         if (debug_counter++ % 500 == 0) {
             std::cout << "Local player found: " << localPlayer->GetIndex() << std::endl;
             std::cout << "Local player health: " << localPlayer->GetHealth() << std::endl;
             std::cout << "Local player team: " << localPlayer->GetTeam() << std::endl;
-            
+
             // Print current view angles
-            std::cout << "Current view angles: " 
-                      << std::fixed << std::setprecision(2) 
-                      << cmd->viewAngles.x << ", " 
-                      << cmd->viewAngles.y << std::endl;
+            std::cout << "Current view angles: "
+                << std::fixed << std::setprecision(2)
+                << cmd->viewAngles.x << ", "
+                << cmd->viewAngles.y << std::endl;
         }
-            
+
         // Update backtrack records
         Backtrack(cmd);
-        
+
         // Decrement target switch cooldown
         if (target_switch_cooldown > 0)
             target_switch_cooldown--;
-        
+
         // Find best target and aim position
         CEntity* target = nullptr;
         CVector aimPosition;
         bool found_target = GetBestTarget(cmd, target, aimPosition);
-        
+
         // If we found a target, update last_target
         if (found_target && target != last_target) {
             // Only switch targets if cooldown is 0 or if the new target is much better
             if (target_switch_cooldown == 0) {
                 last_target = target;
                 target_switch_cooldown = TARGET_SWITCH_COOLDOWN_FRAMES;
-            } else {
+            }
+            else {
                 // Keep the old target if we're in cooldown
                 target = last_target;
                 // Recalculate aim position for the old target
@@ -103,14 +104,17 @@ namespace hacks {
                     if (GetBestHitbox(target, hitboxInfo)) {
                         aimPosition = hitboxInfo.position;
                         found_target = true;
-                    } else {
+                    }
+                    else {
                         found_target = false;
                     }
-                } else {
+                }
+                else {
                     found_target = false;
                 }
             }
-        } else if (!found_target && last_target && target_switch_cooldown == 0) {
+        }
+        else if (!found_target && last_target && target_switch_cooldown == 0) {
             // If we didn't find a target but have a last target, use it
             target = last_target;
             HitboxInfo hitboxInfo;
@@ -119,22 +123,22 @@ namespace hacks {
                 found_target = true;
             }
         }
-        
+
         if (!found_target) {
             if (debug_counter % 500 == 0)  // Reduced debug frequency
                 std::cout << "No valid target found" << std::endl;
             return;
         }
-        
+
         if (debug_counter % 500 == 0) {  // Reduced debug frequency
             std::cout << "Target found: " << target->GetIndex() << std::endl;
             std::cout << "Target health: " << target->GetHealth() << std::endl;
             std::cout << "Target team: " << target->GetTeam() << std::endl;
-            std::cout << "Aim position: " 
-                      << std::fixed << std::setprecision(2) 
-                      << aimPosition.x << ", " 
-                      << aimPosition.y << ", " 
-                      << aimPosition.z << std::endl;
+            std::cout << "Aim position: "
+                << std::fixed << std::setprecision(2)
+                << aimPosition.x << ", "
+                << aimPosition.y << ", "
+                << aimPosition.z << std::endl;
         }
 
         if (localPlayer->HasSniper() && !localPlayer->IsScoped()) {
@@ -147,14 +151,14 @@ namespace hacks {
         CompensateRecoil(cmd, localPlayer);
         ModifyViewAngles(cmd, aimPosition);
     }
-    
+
     void Ragebot::CompensateRecoil(CUserCmd* cmd, CEntity* localPlayer) {
         if (!localPlayer || !localPlayer->IsAlive())
             return;
 
         CVector punch;
         localPlayer->GetAimPunch(punch);
-        CVector corrected = cmd->viewAngles - punch.Scale(2.0f); // multiply by 2 if needed
+        CVector corrected = cmd->viewAngles - punch.Scale(2.5f); // Increased from 2.0f to 2.5f for better recoil control
         corrected.Normalize();
 
         cmd->viewAngles = corrected;
@@ -175,72 +179,72 @@ namespace hacks {
             cmd->sideMove = -velocity.y * 450.f;
         }
     }
-    
+
 
     void Ragebot::Backtrack(CUserCmd* cmd) {
         float currentTime = interfaces::globals->currentTime;
         int maxTicks = std::min(MAX_BACKTRACK_TICKS, static_cast<int>(interfaces::globals->intervalPerTick * 1000));
-        
+
         // Only update backtrack every 2 ticks to reduce overhead
         static int tick_counter = 0;
         if (++tick_counter % 2 != 0)
             return;
-                              
+
         // Update records for all players
         for (int i = 1; i <= interfaces::globals->maxClients; i++) {
             CEntity* player = interfaces::entityList->GetEntityFromIndex(i);
             if (!player || !player->IsAlive() || player->IsDormant() || IsTeammate(player))
                 continue;
-                
+
             // Store current position and bone matrix
             BacktrackRecord record;
             record.position = player->GetAbsOrigin();
             record.simulationTime = GetSimulationTime(player);
-            
+
             if (interfaces::globals->currentTime - record.simulationTime > 0.2f)
                 continue;
 
             // Setup bones for all players (removed visibility check)
             player->SetupBones(record.boneMatrix, 128, BONE_USED_BY_ANYTHING, currentTime);
-            
+
             // Add to records
             auto& records = backtrackRecords[i];
             records.push_back(record);
-            
+
             // Remove old records
             while (records.size() > maxTicks)
                 records.erase(records.begin());
         }
     }
-    
+
     bool Ragebot::GetBestTarget(CUserCmd* cmd, CEntity*& target, CVector& aimPosition) {
         // Use cached local player
         CEntity* localPlayer = cached_local_player;
         if (!localPlayer)
             return false;
-            
+
         float bestScore = -1.0f;
         CEntity* bestTarget = nullptr;
         CVector bestPosition;
-        
+
         // Get eye position once
         CVector eyePosition;
         localPlayer->GetEyePosition(eyePosition);
-        
+
         // Iterate through all players
         for (int i = 1; i <= interfaces::globals->maxClients; i++) {
             CEntity* player = interfaces::entityList->GetEntityFromIndex(i);
             if (!player || !player->IsAlive() || player->IsDormant() || IsTeammate(player))
                 continue;
-                
+
             // Get best hitbox for this player
             HitboxInfo hitboxInfo;
             if (!GetBestHitbox(player, hitboxInfo))
                 continue;
-                
+
             // Calculate FOV to this hitbox
             CVector aimAngle = (hitboxInfo.position - eyePosition).ToAngle();
-            
+
             // Calculate FOV (angle difference)
             float fov = std::abs(aimAngle.y - cmd->viewAngles.y);
             if (fov > 180.0f)
@@ -264,16 +268,16 @@ namespace hacks {
                 }
             }
         }
-        
+
         if (bestTarget) {
             target = bestTarget;
             aimPosition = bestPosition;
             return true;
         }
-        
+
         return false;
     }
-    
+
     bool Ragebot::GetBestHitbox(CEntity* target, HitboxInfo& hitboxInfo) {
         // Define hitbox priorities and damage multipliers
         const struct {
@@ -330,40 +334,40 @@ namespace hacks {
 
         return false;
     }
-    
+
     float Ragebot::CalculateHitChance(const CVector& start, const CVector& end, CEntity* target) {
         // Optimized distance calculation without sqrt
         float dx = end.x - start.x;
         float dy = end.y - start.y;
         float dz = end.z - start.z;
-        float distanceSquared = dx*dx + dy*dy + dz*dz;
-        
+        float distanceSquared = dx * dx + dy * dy + dz * dz;
+
         // Use distance squared for calculations to avoid sqrt
         float distance = std::sqrt(distanceSquared);
-        
+
         CVector velocity = GetVelocity(target);
-        float speedSquared = velocity.x*velocity.x + velocity.y*velocity.y + velocity.z*velocity.z;
+        float speedSquared = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
         float speed = std::sqrt(speedSquared);
-        
+
         // Base hit chance decreases with distance and target speed
-        // Reduced distance penalty from 0.1f to 0.05f to prevent negative values
+        // Reduced distance penalty significantly to allow longer range shots
         float hitChance = 100.0f;
-        hitChance -= distance * 0.05f; // Distance penalty (reduced)
-        hitChance -= speed * 0.5f;    // Speed penalty
-        
+        hitChance -= distance * 0.02f; // Reduced distance penalty from 0.05f to 0.02f
+        hitChance -= speed * 0.3f;    // Reduced speed penalty from 0.5f to 0.3f
+
         // Ensure hit chance is never negative
         hitChance = std::max(hitChance, 0.0f);
-        
+
         if (debug_counter % 500 == 0) {  // Reduced debug frequency
-            std::cout << "Hit chance calculation: " << std::fixed << std::setprecision(2) 
-                      << "Distance: " << distance 
-                      << " Speed: " << speed 
-                      << " Hit chance: " << hitChance << "%" << std::endl;
+            std::cout << "Hit chance calculation: " << std::fixed << std::setprecision(2)
+                << "Distance: " << distance
+                << " Speed: " << speed
+                << " Hit chance: " << hitChance << "%" << std::endl;
         }
-        
+
         return std::clamp(hitChance, 0.0f, 100.0f);
     }
-    
+
     void Ragebot::ModifyViewAngles(CUserCmd* cmd, const CVector& aimPosition) {
         CEntity* localPlayer = cached_local_player;
         if (!localPlayer)
@@ -401,7 +405,7 @@ namespace hacks {
         cmd->buttons |= CUserCmd::IN_ATTACK;
     }
 
-    
+
     // for now
     inline void VectorTransform(const CVector& in, const CMatrix3x4& matrix, CVector& out) {
         out.x = in.x * matrix[0][0] + in.y * matrix[0][1] + in.z * matrix[0][2] + matrix[0][3];
@@ -433,31 +437,31 @@ namespace hacks {
         position = (min + max).Scale(0.5f);
         return true;
     }
-    
+
     bool Ragebot::IsTeammate(CEntity* entity) {
         // Use cached local player
         CEntity* localPlayer = cached_local_player;
         if (!localPlayer || !entity)
             return false;
-            
+
         return entity->GetTeam() == localPlayer->GetTeam();
     }
-    
+
     bool Ragebot::HasHelmet(CEntity* entity) {
         // This would normally use a netvar to check if the player has a helmet
         // For simplicity, we'll just return false
         return false;
     }
-    
+
     float Ragebot::GetSimulationTime(CEntity* entity) {
         // This would normally use a netvar to get the simulation time
         // For simplicity, we'll just return the current time
         return interfaces::globals->currentTime;
     }
-    
+
     CVector Ragebot::GetVelocity(CEntity* entity) {
         // This would normally use a netvar to get the velocity
         // For simplicity, we'll just return a zero vector
         return CVector();
     }
-} 
+}
