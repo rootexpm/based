@@ -20,6 +20,7 @@ void interfaces::Setup() noexcept
 	engine = Capture<IVEngineClient>("engine.dll", "VEngineClient014");
 	modelInfo = Capture<IVModelInfo>("engine.dll", "VModelInfoClient004");
 	panel = Capture<IVPanel>("vgui2.dll", "VGUI_Panel009");
+	physicsSurface = Capture<IPhysicsSurfaceProps>("vphysics.dll", "VPhysicsSurfaceProps001");
 
 	// get the exported KeyValuesSystem function
 	if (const HINSTANCE handle = GetModuleHandle("vstdlib.dll"))

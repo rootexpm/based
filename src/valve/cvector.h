@@ -32,6 +32,10 @@ public:
 		return { x * factor, y * factor, z * factor };
 	}
 
+	constexpr CVector operator*(float scalar) const noexcept {
+		return { x * scalar, y * scalar, z * scalar };
+	}
+
 	inline CVector ToAngle() const noexcept
 	{
 		return {

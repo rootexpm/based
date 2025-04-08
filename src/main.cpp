@@ -29,7 +29,16 @@ DWORD WINAPI Setup(LPVOID lpParam)
 	hooks::Destroy();		// restore hooks
 
 	// Clean up console
-	if (f) fclose(f);
+	if (f) {
+		fclose(f);
+		f = nullptr;
+	}
+	
+	// Ensure console is properly closed
+	HWND console = GetConsoleWindow();
+	if (console) {
+		PostMessage(console, WM_CLOSE, 0, 0);
+	}
 	FreeConsole();
 
 	// unload library

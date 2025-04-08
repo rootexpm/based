@@ -10,6 +10,7 @@
 #include <iostream>
 #include <iomanip>
 #include "autowall.h"
+#include "../valve/cbasecombatweapon.h"
 
 namespace hacks {
     std::unordered_map<int, std::vector<Ragebot::BacktrackRecord>> Ragebot::backtrackRecords;
@@ -184,33 +185,40 @@ namespace hacks {
     void Ragebot::Backtrack(CUserCmd* cmd) {
         float currentTime = interfaces::globals->currentTime;
         int maxTicks = std::min(MAX_BACKTRACK_TICKS, static_cast<int>(interfaces::globals->intervalPerTick * 1000));
-
+        
         // Only update backtrack every 2 ticks to reduce overhead
         static int tick_counter = 0;
         if (++tick_counter % 2 != 0)
             return;
-
+                              
         // Update records for all players
         for (int i = 1; i <= interfaces::globals->maxClients; i++) {
             CEntity* player = interfaces::entityList->GetEntityFromIndex(i);
-            if (!player || !player->IsAlive() || player->IsDormant() || IsTeammate(player))
+            
+            // Clean up records for dead or dormant players
+            if (!player || !player->IsAlive() || player->IsDormant()) {
+                backtrackRecords[i].clear();
                 continue;
-
+            }
+            
+            if (IsTeammate(player))
+                continue;
+                
             // Store current position and bone matrix
             BacktrackRecord record;
             record.position = player->GetAbsOrigin();
             record.simulationTime = GetSimulationTime(player);
-
+            
             if (interfaces::globals->currentTime - record.simulationTime > 0.2f)
                 continue;
 
             // Setup bones for all players (removed visibility check)
             player->SetupBones(record.boneMatrix, 128, BONE_USED_BY_ANYTHING, currentTime);
-
+            
             // Add to records
             auto& records = backtrackRecords[i];
             records.push_back(record);
-
+            
             // Remove old records
             while (records.size() > maxTicks)
                 records.erase(records.begin());
@@ -222,29 +230,31 @@ namespace hacks {
         CEntity* localPlayer = cached_local_player;
         if (!localPlayer)
             return false;
-
+            
         float bestScore = -1.0f;
         CEntity* bestTarget = nullptr;
         CVector bestPosition;
-
+        
         // Get eye position once
         CVector eyePosition;
         localPlayer->GetEyePosition(eyePosition);
-
+        
         // Iterate through all players
         for (int i = 1; i <= interfaces::globals->maxClients; i++) {
             CEntity* player = interfaces::entityList->GetEntityFromIndex(i);
+            
+            // Skip invalid, dead, or dormant players
             if (!player || !player->IsAlive() || player->IsDormant() || IsTeammate(player))
                 continue;
-
+                
             // Get best hitbox for this player
             HitboxInfo hitboxInfo;
             if (!GetBestHitbox(player, hitboxInfo))
                 continue;
-
+                
             // Calculate FOV to this hitbox
             CVector aimAngle = (hitboxInfo.position - eyePosition).ToAngle();
-
+            
             // Calculate FOV (angle difference)
             float fov = std::abs(aimAngle.y - cmd->viewAngles.y);
             if (fov > 180.0f)
@@ -268,13 +278,13 @@ namespace hacks {
                 }
             }
         }
-
-        if (bestTarget) {
+        
+        if (bestTarget && bestTarget->IsAlive()) {
             target = bestTarget;
             aimPosition = bestPosition;
             return true;
         }
-
+        
         return false;
     }
 
@@ -309,7 +319,17 @@ namespace hacks {
                 continue;
 
             // Use autowall to determine real damage
-            float damage = Autowall::CanHitDamage(eyePosition, position, target);
+            CEntity* weaponEntity = localPlayer->GetActiveWeapon();
+            if (!weaponEntity)
+                continue;
+
+            auto* weapon = reinterpret_cast<CBaseCombatWeapon*>(weaponEntity);
+            auto* weaponInfo = weapon->GetWeaponData();
+
+            if (!weaponInfo)
+                continue;
+
+            float damage = Autowall::CanHitDamage(eyePosition, position, target, weaponInfo);
             if (HasHelmet(target) && hitbox.hitbox == HITBOX_HEAD)
                 damage *= 0.5f;
 
@@ -392,7 +412,7 @@ namespace hacks {
         // Recoil compensation (before setting angles)
         CVector punch;
         localPlayer->GetAimPunch(punch);
-        aimAngle = aimAngle - punch.Scale(2.0f);
+        aimAngle = aimAngle - punch.Scale(2.5f);
 
         // Clamp
         aimAngle.x = std::clamp(aimAngle.x, -89.f, 89.f);
@@ -402,7 +422,11 @@ namespace hacks {
 
         //AutoStop(cmd, localPlayer);
         cmd->viewAngles = aimAngle;
-        cmd->buttons |= CUserCmd::IN_ATTACK;
+        
+        // Only shoot if we have a valid target
+        if (last_target && last_target->IsAlive()) {
+            cmd->buttons |= CUserCmd::IN_ATTACK;
+        }
     }
 
 

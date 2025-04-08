@@ -181,6 +181,7 @@
     <ClInclude Include="src\hacks\ragebot.h" />
     <ClInclude Include="src\util\hash.h" />
     <ClInclude Include="src\util\memory.h" />
+    <ClInclude Include="src\valve\cbasecombatweapon.h" />
     <ClInclude Include="src\valve\cclientclass.h" />
     <ClInclude Include="src\valve\ccolor.h" />
     <ClInclude Include="src\valve\centity.h" />
@@ -196,6 +197,7 @@
     <ClInclude Include="src\valve\icliententitylist.h" />
     <ClInclude Include="src\valve\ienginetrace.h" />
     <ClInclude Include="src\valve\iglobalvars.h" />
+    <ClInclude Include="src\valve\iphysicssurfaceprops.h" />
     <ClInclude Include="src\valve\ispatialquery.h" />
     <ClInclude Include="src\valve\iclientmodeshared.h" />
     <ClInclude Include="src\valve\isurface.h" />
@@ -205,6 +207,7 @@
     <ClInclude Include="src\valve\istudiorender.h" />
     <ClInclude Include="src\valve\ivmodelinfo.h" />
     <ClInclude Include="src\valve\ivpanel.h" />
+    <ClInclude Include="src\valve\weaponinfo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
