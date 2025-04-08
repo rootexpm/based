@@ -178,6 +178,10 @@ public:
 
 	CEntity* entity;
 	int hitbox;
+
+	bool DidHit() const noexcept {
+		return fraction < 1.0f || allSolid || startSolid;
+	};
 };
 
 // interface itself

@@ -88,9 +88,10 @@ public:
 public: // netvars
 	NETVAR(GetFlags, "CBasePlayer->m_fFlags", std::int32_t);
 	NETVAR(IsScoped, "CCSPlayer->m_bIsScoped", bool)
-	NETVAR(IsDefusing, "CCSPlayer->m_bIsDefusing", bool)
-	NETVAR(HasGunGameImmunity, "CCSPlayer->m_bGunGameImmunity", bool)
-	NETVAR(GetClip, "CBaseCombatWeapon->m_iClip1", int)
+		NETVAR(IsDefusing, "CCSPlayer->m_bIsDefusing", bool)
+		NETVAR(HasGunGameImmunity, "CCSPlayer->m_bGunGameImmunity", bool)
+		NETVAR(GetClip, "CBaseCombatWeapon->m_iClip1", int)
+		NETVAR(GetVelocity, "CCSPlayer->m_vecVelocity", CVector);
 
 public: // renderable virtual functions (+0x4)
 	constexpr CModel* GetModel() noexcept
@@ -173,5 +174,14 @@ public: // entity virtual functions
 	constexpr int GetWeaponType() noexcept
 	{
 		return memory::Call<int>(this, 455);
+	}
+
+	constexpr bool HasSniper() noexcept {
+		CEntity* weapon = GetActiveWeapon();
+		if (!weapon)
+			return false;
+
+		int weaponType = weapon->GetWeaponType();
+		return weaponType == WEAPONTYPE_SNIPER;
 	}
 };

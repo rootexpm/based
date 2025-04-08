@@ -156,7 +156,9 @@
     <ClCompile Include="src\core\hooks.cpp" />
     <ClCompile Include="src\core\interfaces.cpp" />
     <ClCompile Include="src\core\netvars.cpp" />
+    <ClCompile Include="src\hacks\autowall.cpp" />
     <ClCompile Include="src\hacks\misc.cpp" />
+    <ClCompile Include="src\hacks\ragebot.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\util\memory.cpp" />
   </ItemGroup>
@@ -174,7 +176,9 @@
     <ClInclude Include="src\core\hooks.h" />
     <ClInclude Include="src\core\interfaces.h" />
     <ClInclude Include="src\core\netvars.h" />
+    <ClInclude Include="src\hacks\autowall.h" />
     <ClInclude Include="src\hacks\misc.h" />
+    <ClInclude Include="src\hacks\ragebot.h" />
     <ClInclude Include="src\util\hash.h" />
     <ClInclude Include="src\util\memory.h" />
     <ClInclude Include="src\valve\cclientclass.h" />

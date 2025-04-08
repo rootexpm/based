@@ -7,6 +7,7 @@
 #include <intrin.h>
 
 #include "../hacks/misc.h"
+#include "../hacks/ragebot.h"
 
 void hooks::Setup() noexcept
 {
@@ -69,7 +70,10 @@ bool __stdcall hooks::CreateMove(float frameTime, CUserCmd* cmd) noexcept
 
 	if (globals::localPlayer && globals::localPlayer->IsAlive())
 	{
-		// example bhop
+		// Run ragebot before other features
+		hacks::Ragebot::Run(cmd);
+		
+		// Run other features
 		hacks::RunBunnyHop(cmd);
 	}
 

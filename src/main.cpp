@@ -1,6 +1,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <thread>
+#include <iostream>
 
 // expose our cheat to main.cpp
 #include "core/hooks.h"
@@ -8,6 +9,14 @@
 // setup our cheat & unload it when exit key is pressed
 DWORD WINAPI Setup(LPVOID lpParam)
 {
+	// Initialize console for debugging
+	AllocConsole();
+	FILE* f;
+	freopen_s(&f, "CONOUT$", "w", stdout);
+	freopen_s(&f, "CONIN$", "r", stdin);
+	std::cout << "Based CSGO Cheat Initialized" << std::endl;
+	std::cout << "Press END to unload" << std::endl;
+
 	memory::Setup();		// find signatures
 	interfaces::Setup();    // capture interfaces
 	netvars::Setup();		// dump latest offsets
@@ -18,6 +27,10 @@ DWORD WINAPI Setup(LPVOID lpParam)
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
 	hooks::Destroy();		// restore hooks
+
+	// Clean up console
+	if (f) fclose(f);
+	FreeConsole();
 
 	// unload library
 	FreeLibraryAndExitThread(static_cast<HMODULE>(lpParam), EXIT_SUCCESS);

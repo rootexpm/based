@@ -2,6 +2,7 @@
 #include <numbers>
 #include <cstdint>
 #include <cmath>
+#include <algorithm>
 
 class CVector
 {
@@ -38,6 +39,20 @@ public:
 			std::atan2(y, x) * (180.0f / std::numbers::pi_v<float>),
 			0.0f 
 		};
+	}
+
+	inline void Normalize() noexcept {
+		while (y > 180.0f) y -= 360.0f;
+		while (y < -180.0f) y += 360.0f;
+		x = std::clamp(x, -89.0f, 89.0f);
+	}
+
+	inline float Length() const noexcept {
+		return std::sqrt(x * x + y * y + z * z);
+	}
+
+	inline float Length2D() const noexcept {
+		return std::sqrt(x * x + y * y);
 	}
 
 	float x{ }, y{ }, z{ };
